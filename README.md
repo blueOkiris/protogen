@@ -17,7 +17,7 @@ Then, protogen uses that to create a couple headers:
 
 ### Example
 
-Consider a library set up something like this with basic organization:
+Consider a regular C project set up something like this with basic organization:
 
 - liba.h
    ```c
@@ -95,7 +95,7 @@ Try the protogen way instead. Your project will look like this instead:
 - liba.c
    ```c
    #include <fns.h>
-   #include <liba_fns.h>
+   #include <liba.c_fns.h>
 
    // Public API
    pub fn void liba_foo(void) {
@@ -113,7 +113,7 @@ Try the protogen way instead. Your project will look like this instead:
 - libb.c
    ```c
    #include <fns.h>
-   #include <libb_fns.h>
+   #include <libb.c_fns.h>
 
    // Public API
    pub fn void libb_foo(void) {
@@ -131,7 +131,7 @@ Try the protogen way instead. Your project will look like this instead:
 - main.c:
    ```
    #include <fns.h>
-   #include <main_fns.h>
+   #include <main.c_fns.h>
 
    pub fn int main(char **argv, char **argc) {
       liba_foo();
