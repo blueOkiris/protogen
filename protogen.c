@@ -1,5 +1,7 @@
 // Protogen prototype generator
 
+#define VERS        1L
+
 #include <string.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -29,6 +31,10 @@ char *basename(const char *const path);
 bool is_wspace(char c);
 
 int main(int argc, char **argv) {
+    if (argc == 2 && strcmp(argv[1], "--version") == 0) {
+        printf("%lu\n", VERS);
+        return 0;
+    }
     if (argc < 3) {
         fprintf(
             stderr,
