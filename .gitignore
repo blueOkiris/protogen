@@ -1,0 +1,4 @@
+# Example Output
+out/
+*.exe
+*.h
