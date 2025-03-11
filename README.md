@@ -76,7 +76,7 @@ Consider a regular C project set up something like this with basic organization:
    }
    ```
 - main.c:
-   ```
+   ```c
    #include <liba.h>
    #include <libb.h>
 
@@ -129,7 +129,7 @@ Try the protogen way instead. Your project will look like this instead:
    }
    ```
 - main.c:
-   ```
+   ```c
    #include <fns.h>
    #include <main.c_fns.h>
 
