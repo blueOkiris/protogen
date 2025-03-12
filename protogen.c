@@ -51,7 +51,7 @@ int main(int argc, char **argv) {
     str_new(&global_header);
     str_append(
         &global_header,
-        "#pragma once\n\n#define fn \n#define export \n\n"
+        "#pragma once\n\n#define fn \n#define export \n#define deftype(a, b)\n"
     );
     str_t local_header = { 0 };
     char fname[FILENAME_MAX] = "";
@@ -108,7 +108,7 @@ void str_append(str_t *ref_str, char *data) {
     size_t new_data_len = strlen(data);
     if (ref_str->len + new_data_len + 1 > ref_str->cap) {
         // Resize
-        if (new_data_len + 1 < (ref_str->len + 1) * 2) {
+        if (ref_str->len + new_data_len + 1 < (ref_str->len + 1) * 2) {
             // < double → double
             ref_str->cap = (ref_str->len + 1) * 2;
             ref_str->data = realloc(ref_str->data, ref_str->cap);
@@ -160,8 +160,10 @@ int gen_file_headers(
             while (i < len && is_wspace(code[i])) {
                 i++;
             }
-            if (i + 2 >= len || strncmp("fn", code + i, 2) != 0) {
-                // Not "export fn", so must be an exported global var
+            if ((i + 2 >= len || strncmp("fn", code + i, 2) != 0)
+                    && (i + 7 >= len || strncmp("deftype", code + i, 7) != 0)) {
+                // Not "export fn" or "export deftype,"
+                // so must be an exported global var
                 bool found_eq = false;
                 str_new(&fn_header);
                 str_append(&fn_header, "extern ");
@@ -188,6 +190,7 @@ int gen_file_headers(
                 }
                 if (i >= len || code[i] != ';') {
                     str_free(&fn_header);
+                    is_pub = false;
                     continue;
                 }
                 str_append(&fn_header, ";\n");
@@ -218,6 +221,7 @@ int gen_file_headers(
             }
             if (i >= len || code[i] != '{') {
                 str_free(&fn_header);
+                is_pub = false;
                 continue;
             }
             str_append(&fn_header, ";\n");
@@ -227,6 +231,179 @@ int gen_file_headers(
                 str_append(ref_l_hdr, fn_header.data);
             }
             str_free(&fn_header);
+            is_pub = false;
+        } else if (i + 7 < len && strncmp("deftype", code + i, 2) == 0
+                && (is_wspace(code[i + 7]) || code[i + 7] == '(')) {
+            while (i < len && code[i] != '(') {
+                if (i + 1 < len && strncmp("/*", code + i, 2) == 0) {
+                    // Skip to */ (or EOF)
+                    while (i + 1 < len && strncmp("*/", code + i, 2) != 0) {
+                        i++;
+                    }
+                } else if (i + 1 < len && strncmp("//", code + i, 2) == 0) {
+                    // Skip to \n (or EOF)
+                    while (i < len && code[i] != '\n') {
+                        i++;
+                    }
+                } else {
+                    i++;
+                }
+            }
+            if (i >= len || code[i] != '(') {
+                str_free(&fn_header);
+                is_pub = false;
+                continue;
+            }
+            i++;
+
+            str_t name = { 0 };
+            str_new(&name);
+            while (i < len && code[i] != ',' && code[i] != '<') {
+                if (i + 1 < len && strncmp("/*", code + i, 2) == 0) {
+                    // Skip to */ (or EOF)
+                    while (i + 1 < len && strncmp("*/", code + i, 2) != 0) {
+                        i++;
+                    }
+                } else if (i + 1 < len && strncmp("//", code + i, 2) == 0) {
+                    // Skip to \n (or EOF)
+                    while (i < len && code[i] != '\n') {
+                        i++;
+                    }
+                } else {
+                    if (!is_wspace(code[i])) {
+                        str_push(&name, code[i]);
+                    }
+                    i++;
+                }
+            }
+            if (i >= len || (code[i] != ',' && code[i] != '<')) {
+                str_free(&name);
+                is_pub = false;
+                continue;
+            }
+            i++;
+
+            bool has_gens = false;
+            str_t gens;
+            str_new(&gens);
+            if (code[i - 1] == '<') {
+                has_gens = true;
+                while (i < len && code[i] !=  '>') {
+                    if (i + 1 < len && strncmp("/*", code + i, 2) == 0) {
+                        // Skip to */ (or EOF)
+                        while (i + 1 < len && strncmp("*/", code + i, 2) != 0) {
+                            i++;
+                        }
+                    } else if (i + 1 < len && strncmp("//", code + i, 2) == 0) {
+                        // Skip to \n (or EOF)
+                        while (i < len && code[i] != '\n') {
+                            i++;
+                        }
+                    } else {
+                        if (code[i] != ';' && !is_wspace(code[i])) {
+                            str_push(&gens, code[i]);
+                        } else if (code[i] == ';') {
+                            str_push(&gens, ',');
+                        }
+                        i++;
+                    }
+                }
+                if (i >= len || code[i] != '>') {
+                    str_free(&name);
+                    str_free(&gens);
+                    is_pub = false;
+                    continue;
+                }
+                i++;
+
+                while (i < len && code[i] !=  ',') {
+                    if (i + 1 < len && strncmp("/*", code + i, 2) == 0) {
+                        // Skip to */ (or EOF)
+                        while (i + 1 < len && strncmp("*/", code + i, 2) != 0) {
+                            i++;
+                        }
+                    } else if (i + 1 < len && strncmp("//", code + i, 2) == 0) {
+                        // Skip to \n (or EOF)
+                        while (i < len && code[i] != '\n') {
+                            i++;
+                        }
+                    } else {
+                        i++;
+                    }
+                }
+                if (i >= len || code[i] != ',') {
+                    str_free(&name);
+                    str_free(&gens);
+                    is_pub = false;
+                    continue;
+                }
+                i++;
+            }
+
+            str_t body = { 0 };
+            str_new(&body);
+            while (i < len && code[i] != ')') {
+                if (i + 1 < len && strncmp("/*", code + i, 2) == 0) {
+                    // Skip to */ (or EOF)
+                    while (i + 1 < len && strncmp("*/", code + i, 2) != 0) {
+                        if (has_gens && code[i] == '\n') {
+                            str_append(&body, " \\\n");
+                        }
+                        i++;
+                    }
+                } else if (i + 1 < len && strncmp("//", code + i, 2) == 0) {
+                    // Skip to \n (or EOF)
+                    while (i < len && code[i] != '\n') {
+                        i++;
+                    }
+                } else {
+                    if (has_gens && code[i] == '\n') {
+                        str_append(&body, " \\\n");
+                    } else {
+                        str_push(&body, code[i]);
+                    }
+                    i++;
+                }
+            }
+            if (i >= len || code[i] != ')') {
+                str_free(&name);
+                str_free(&gens);
+                str_free(&body);
+                is_pub = false;
+                continue;
+            }
+            i++;
+
+            str_new(&fn_header);
+            if (has_gens) {
+                str_append(&fn_header, "#define __");
+                str_append(&fn_header, name.data);
+                str_append(&fn_header, "__unwrap_va_args(");
+                str_append(&fn_header, gens.data);
+                str_append(&fn_header, ") \\\n");
+                str_append(&fn_header, body.data);
+                str_append(&fn_header, "\n#define ");
+                str_append(&fn_header, name.data);
+                str_append(&fn_header, "(...) __");
+                str_append(&fn_header, name.data);
+                str_append(&fn_header, "__unwrap_va_args(__VA_ARGS__)\n");
+            } else {
+                str_append(&fn_header, "typedef\n");
+                str_append(&fn_header, body.data);
+                str_push(&fn_header, '\n');
+                str_append(&fn_header, name.data);
+                str_append(&fn_header, ";\n");
+            }
+            if (is_pub) {
+                str_append(ref_g_hdr, fn_header.data);
+            } else {
+                str_append(ref_l_hdr, fn_header.data);
+            }
+
+            str_free(&fn_header);
+            str_free(&name);
+            str_free(&gens);
+            str_free(&body);
             is_pub = false;
         }
     }
