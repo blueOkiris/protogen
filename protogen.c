@@ -161,14 +161,45 @@ int gen_file_headers(
                 i++;
             }
             if (i + 2 >= len || strncmp("fn", code + i, 2) != 0) {
-                // Not "pub fn", so we dont' care
+                // Not "pub fn", so must be an exported global var
+                bool found_eq = false;
+                str_new(&fn_header);
+                str_append(&fn_header, "extern ");
+                while (i < len && code[i] != ';') {
+                    if (i + 1 < len && strncmp("/*", code + i, 2) == 0) {
+                        // Skip to */ (or EOF)
+                        while (i + 1 < len && strncmp("*/", code + i, 2) != 0) {
+                            i++;
+                        }
+                    } else if (i + 1 < len && strncmp("//", code + i, 2) == 0) {
+                        // Skip to \n (or EOF)
+                        while (i < len && code[i] != '\n') {
+                            i++;
+                        }
+                    } else {
+                        if (code[i] == '=') {
+                            found_eq = true;
+                        }
+                        if (!found_eq) {
+                            str_push(&fn_header, code[i]);
+                        }
+                        i++;
+                    }
+                }
+                if (i >= len || code[i] != ';') {
+                    str_free(&fn_header);
+                    continue;
+                }
+                str_append(&fn_header, ";\n");
+                str_append(ref_g_hdr, fn_header.data);
+                str_free(&fn_header);
                 is_pub = false;
+                continue;
             }
         }
         if (i + 2 < len && strncmp("fn", code + i, 2) == 0 && is_wspace(code[i + 2])) {
             i += 2;
             str_new(&fn_header);
-
             while (i < len && code[i] != '{') {
                 if (i + 1 < len && strncmp("/*", code + i, 2) == 0) {
                     // Skip to */ (or EOF)
@@ -185,8 +216,8 @@ int gen_file_headers(
                     i++;
                 }
             }
-
             if (i >= len || code[i] != '{') {
+                str_free(&fn_header);
                 continue;
             }
             str_append(&fn_header, ";\n");
