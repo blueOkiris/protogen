@@ -8,14 +8,20 @@ No longer must you define headers for function prototypes in C. Simply call prot
 
 ### How It Works
 
-You declare functions in C via the new `fn` and `pub` keywords, i.e. `pub fn int main(int argc, char **argv) { ... }`.
+You declare functions in C via the new `fn` and `export` keywords, i.e. `export fn int main(int argc, char **argv) { ... }`.
 
 Then, protogen uses that to create a couple headers:
 
-- A single, global header `fns.h` with all public functions (`pub fn`)
+- A single, global header `fns.h` with all public functions (`export fn`)
 - A file for each c file called `<c file name>_fns.h` for local prototypes (just `fn`)
 
-### Example
+## Build
+
+`protogen` is a single C source file, so it can be built alongside your project.
+
+Build it first, then use it when building the rest of your code.
+
+## Simple Example
 
 Consider a regular C project set up something like this with basic organization:
 
@@ -54,27 +60,6 @@ Consider a regular C project set up something like this with basic organization:
    // Public API
    void libb_foo(void);
    ```
-- libb.c
-   ```c
-   #include <libb.h>
-
-   // Private protos
-   void internal_bar(void);
-   ...
-
-   // Public API
-   void libb_foo(void) {
-       ...
-       internal_bar();
-       ...
-   }
-   ...
-
-   // Private fns
-   void internal_bar(void) {
-       ...
-   }
-   ```
 - main.c:
    ```c
    #include <liba.h>
@@ -98,7 +83,7 @@ Try the protogen way instead. Your project will look like this instead:
    #include <liba.c_fns.h>
 
    // Public API
-   pub fn void liba_foo(void) {
+   export fn void liba_foo(void) {
        ...
        internal_bar();
        ...
@@ -110,30 +95,12 @@ Try the protogen way instead. Your project will look like this instead:
        ...
    }
    ```
-- libb.c
-   ```c
-   #include <fns.h>
-   #include <libb.c_fns.h>
-
-   // Public API
-   pub fn void libb_foo(void) {
-       ...
-       internal_bar();
-       ...
-   }
-   ...
-
-   // Private fns
-   fn oid internal_bar(void) {
-       ...
-   }
-   ```
 - main.c:
    ```c
    #include <fns.h>
    #include <main.c_fns.h>
 
-   pub fn int main(char **argv, char **argc) {
+   export fn int main(char **argv, char **argc) {
       liba_foo();
       libb_foo();
    }
@@ -143,8 +110,4 @@ It's just a lot cleaner, and the only cost is you have to run `protogen out/ src
 
 It will generate `out/fns.h`, `out/main_fns.h`, `out/liba_fns.h`, and `out/libb_fns.h`.
 
-## Build
-
-`protogen` is a single C source file, so it can be built alongside your project.
-
-Build it first, then use it when building the rest of your code.
+Check out the `example/` folder for a more in depth example.

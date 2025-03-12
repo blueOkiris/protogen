@@ -1,7 +1,7 @@
 #include <fns.h>
 #include <libb.c_fns.h>
 
-pub fn void libb_foo(void) {
+export fn void libb_foo(void) {
     libb_internal_bar();
 }
 

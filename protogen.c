@@ -51,7 +51,7 @@ int main(int argc, char **argv) {
     str_new(&global_header);
     str_append(
         &global_header,
-        "#pragma once\n\n#define fn \n#define pub \n\n"
+        "#pragma once\n\n#define fn \n#define export \n\n"
     );
     str_t local_header = { 0 };
     char fname[FILENAME_MAX] = "";
@@ -131,7 +131,7 @@ void str_free(str_t *ref_str) {
 }
 
 /*
- * Go through a file searching for [ "pub" ] "fn"
+ * Go through a file searching for [ "export" ] "fn"
  * followed by a function definition (i.e. text until "{" excluding comments)
  *
  * If we error, return 0. Compiler will catch it! Probably wasn't meant for us
@@ -154,14 +154,14 @@ int gen_file_headers(
     str_t fn_header = { 0 };
     bool is_pub = false;
     for (size_t i = 0; i < len; i++) {
-        if (i + 3 < len && strncmp("pub", code + i, 3) == 0 && is_wspace(code[i + 3])) {
+        if (i + 6 < len && strncmp("export", code + i, 6) == 0 && is_wspace(code[i + 6])) {
             is_pub = true;
-            i += 3;
+            i += 6;
             while (i < len && is_wspace(code[i])) {
                 i++;
             }
             if (i + 2 >= len || strncmp("fn", code + i, 2) != 0) {
-                // Not "pub fn", so must be an exported global var
+                // Not "export fn", so must be an exported global var
                 bool found_eq = false;
                 str_new(&fn_header);
                 str_append(&fn_header, "extern ");
