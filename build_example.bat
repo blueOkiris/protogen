@@ -11,7 +11,7 @@ gcc -Wall -Werror -g -o out\protogen.exe protogen.c
 
 REM Run protogen on all the src w/ out/ as output dir to generate headers
 echo Generating headers...
-out\protogen.exe out example\liba.c example\libb.c example\main.c
+out\protogen.exe out example\vec.c example\main.c
 
 REM  Build each source file using generated headers
 echo Compiling C source...
@@ -19,4 +19,4 @@ for %%f in (example\*.c) do gcc -Wall -Werror -g -c "%%f" -o "out\%%~nf.o" -Iout
 
 REM Link
 echo Linking
-gcc -o out\example.exe out\main.o out\liba.o out\libb.o
+gcc -o out\example.exe out\main.o out\vec.o

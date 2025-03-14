@@ -45,7 +45,7 @@ And then you add the new keywords:
       )
       ```
       Protogen will make it work under the hood and generate a typedef
-- `deftype` with Generics
+- `deftype` with Template Generics
    + The deftype macro supports optional template generics: `deftype(name<T1, ...>, body)`
       ```c
       deftype(
@@ -57,6 +57,7 @@ And then you add the new keywords:
       )
       ```
    + You then declare the type via: `<type>(T1, ...)`, e.g. `my_struct_t(int, char)` yields `struct { int a; char b; }`
+   + This isn't all that useful however since template functions are not also possible
 - `export` - Public/Private
    + To allow other files to see your functions, types, and *also* global variables, you can "export" them.
    + This causes their info to end up in the global `fns.h` instead of your C file's local `file.c_fns.h` file.
@@ -68,6 +69,7 @@ And then you add the new keywords:
       export deftype(integer, int32_t)
       export int MY_GLOBAL = 10;
       ```
+   + You can also do `export def` to generate a public define from a C file
 
 ## Build
 
