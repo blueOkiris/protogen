@@ -51,7 +51,9 @@ int main(int argc, char **argv) {
     str_new(&global_header);
     str_append(
         &global_header,
-        "#pragma once\n\n#define fn \n#define export \n#define deftype(a, b)\n"
+        "#pragma once\n\n#include <stdint.h>\n#include <stddef.h>\n#include <stdlib.h>\n"
+            "#include <string.h>\n\n"
+            "#define fn \n#define export \n#define deftype(a, b) \n#define def(...) \n\n"
     );
     str_t local_header = { 0 };
     char fname[FILENAME_MAX] = "";
@@ -154,6 +156,9 @@ int gen_file_headers(
     str_t fn_header = { 0 };
     bool is_pub = false;
     for (size_t i = 0; i < len; i++) {
+        while (i < len && is_wspace(code[i])) {
+            i++;
+        }
         if (i + 6 < len && strncmp("export", code + i, 6) == 0 && is_wspace(code[i + 6])) {
             is_pub = true;
             i += 6;
@@ -161,7 +166,8 @@ int gen_file_headers(
                 i++;
             }
             if ((i + 2 >= len || strncmp("fn", code + i, 2) != 0)
-                    && (i + 7 >= len || strncmp("deftype", code + i, 7) != 0)) {
+                    && (i + 7 >= len || strncmp("deftype", code + i, 7) != 0)
+                    && (i + 3 >= len || strncmp("def", code + i, 3) != 0)) {
                 // Not "export fn" or "export deftype,"
                 // so must be an exported global var
                 bool found_eq = false;
@@ -232,7 +238,7 @@ int gen_file_headers(
             }
             str_free(&fn_header);
             is_pub = false;
-        } else if (i + 7 < len && strncmp("deftype", code + i, 2) == 0
+        } else if (i + 7 < len && strncmp("deftype", code + i, 7) == 0
                 && (is_wspace(code[i + 7]) || code[i + 7] == '(')) {
             while (i < len && code[i] != '(') {
                 if (i + 1 < len && strncmp("/*", code + i, 2) == 0) {
@@ -250,7 +256,6 @@ int gen_file_headers(
                 }
             }
             if (i >= len || code[i] != '(') {
-                str_free(&fn_header);
                 is_pub = false;
                 continue;
             }
@@ -405,6 +410,76 @@ int gen_file_headers(
             str_free(&gens);
             str_free(&body);
             is_pub = false;
+        } else if (i + 3 < len && strncmp("def", code + i, 3) == 0
+                && (is_wspace(code[i + 3]) || code[i + 3] == '(')) {
+            while (i < len && code[i] != '(') {
+                if (i + 1 < len && strncmp("/*", code + i, 2) == 0) {
+                    // Skip to */ (or EOF)
+                    while (i + 1 < len && strncmp("*/", code + i, 2) != 0) {
+                        i++;
+                    }
+                } else if (i + 1 < len && strncmp("//", code + i, 2) == 0) {
+                    // Skip to \n (or EOF)
+                    while (i < len && code[i] != '\n') {
+                        i++;
+                    }
+                } else {
+                    i++;
+                }
+            }
+            if (i >= len || code[i] != '(') {
+                is_pub = false;
+                continue;
+            }
+            i++;
+
+            str_t text = { 0 };
+            str_new(&text);
+            size_t depth = 0;
+            while (i < len && (code[i] != ')' || depth != 0)) {
+                if (i + 1 < len && strncmp("/*", code + i, 2) == 0) {
+                    // Skip to */ (or EOF)
+                    while (i + 1 < len && strncmp("*/", code + i, 2) != 0) {
+                        i++;
+                    }
+                } else if (i + 1 < len && strncmp("//", code + i, 2) == 0) {
+                    // Skip to \n (or EOF)
+                    while (i < len && code[i] != '\n') {
+                        i++;
+                    }
+                } else {
+                    if (code[i] == '(') {
+                        depth++;
+                    } else if (code[i] == ')') {
+                        depth--;
+                    }
+                    str_push(&text, code[i]);
+                    i++;
+                }
+            }
+            if (i >= len || code[i] != ')') {
+                str_free(&text);
+                is_pub = false;
+                continue;
+            }
+            i++;
+
+            str_new(&fn_header);
+            str_append(&fn_header, "#define ");
+            str_append(&fn_header, text.data);
+            str_push(&fn_header, '\n');
+            if (is_pub) {
+                str_append(ref_g_hdr, fn_header.data);
+            } else {
+                str_append(ref_l_hdr, fn_header.data);
+            }
+
+            str_free(&fn_header);
+            str_free(&text);
+            is_pub = false;
+        }
+        while (i < len && !is_wspace(code[i])) {
+            i++;
         }
     }
 
